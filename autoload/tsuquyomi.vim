@@ -340,7 +340,7 @@ function! tsuquyomi#complete(findstart, base)
         let j = j + 1
     endwhile
     " return filter(map(l:res_list, 'v:val.name'), 'stridx(v:val, a:base) == 0')
-    return list
+    return result
   endif
 endfunction
 " ### Complete }}}
