@@ -299,47 +299,30 @@ function! tsuquyomi#complete(findstart, base)
     call tsuquyomi#perfLogger#record('after_tsCompletions')
     let [has_info, siginfo] = tsuquyomi#makeCompleteInfo(l:file, l:line, l:start)
     let size = g:tsuquyomi_completion_chunk_size
-    let j = 0
     let length = strlen(a:base)
     let result = []
-    while j * size < len(l:res_list)
+    if g:tsuquyomi_completion_detail
         let entries = []
-        let items = []
-        let upper = min([(j + 1) * size, len(l:res_list)])
-        for i in range(j * size, upper - 1)
-            let info = l:res_list[i]
+        for info in l:res_list
             if !length 
                         \ || !g:tsuquyomi_completion_case_sensitive && info.name[0:length - 1] == a:base
                         \ || g:tsuquyomi_completion_case_sensitive && info.name[0:length - 1] ==# a:base
-                let l:item = {'word': info.name, 'menu': info.kind }
-                if !g:tsuquyomi_completion_detail
-                    call complete_add(l:item)
-                else
-                    call add(entries, info.name)
-                    call add(items, l:item)
-                endif
+                call add(entries, info.name)
+                call add(result, {'word': info.name, 'menu': info.kind})
             endif
         endfor
-        if g:tsuquyomi_completion_detail
-            call tsuquyomi#perfLogger#record('before_completeMenu'.j)
-            let menus = tsuquyomi#makeCompleteMenu(l:file, l:line, l:start, entries)
-            call tsuquyomi#perfLogger#record('after_completeMenu'.j)
-            let idx = 0
-            for menu in menus
-                let items[idx].menu = menu
-                if has_info
-                    let items[idx].info = siginfo
-                endif
-                call add(result, items[idx])
-                let idx = idx + 1
-            endfor
-        endif
-        if complete_check()
-            break
-        endif
-        let j = j + 1
-    endwhile
-    " return filter(map(l:res_list, 'v:val.name'), 'stridx(v:val, a:base) == 0')
+        let menus = tsuquyomi#makeCompleteMenu(l:file, l:line, l:start, entries)
+        let idx = 0
+        for menu in menus
+            let result[idx].menu = menu
+            if has_info
+                let result[idx].info = siginfo
+            endif
+            let idx = idx + 1
+        endfor
+    else
+        result = filter(map(l:res_list, 'v:val.name'), 'stridx(v:val, a:base) == 0')
+    endif
     return result
   endif
 endfunction
