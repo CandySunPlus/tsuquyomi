@@ -297,55 +297,50 @@ function! tsuquyomi#complete(findstart, base)
     call tsuquyomi#perfLogger#record('before_tsCompletions')
     let l:res_list = tsuquyomi#tsClient#tsCompletions(l:file, l:line, l:start, a:base)
     call tsuquyomi#perfLogger#record('after_tsCompletions')
-    let enable_menu = stridx(&completeopt, 'menu') != -1
+    let [has_info, siginfo] = tsuquyomi#makeCompleteInfo(l:file, l:line, l:start)
+    let size = g:tsuquyomi_completion_chunk_size
+    let j = 0
     let length = strlen(a:base)
-    if enable_menu
-      call tsuquyomi#perfLogger#record('start_menu')
-      let [has_info, siginfo] = tsuquyomi#makeCompleteInfo(l:file, l:line, l:start)
-      let size = g:tsuquyomi_completion_chunk_size
-      let j = 0
-      while j * size < len(l:res_list)
+    let result = []
+    while j * size < len(l:res_list)
         let entries = []
         let items = []
         let upper = min([(j + 1) * size, len(l:res_list)])
         for i in range(j * size, upper - 1)
-          let info = l:res_list[i]
-          if !length 
-                \ || !g:tsuquyomi_completion_case_sensitive && info.name[0:length - 1] == a:base
-                \ || g:tsuquyomi_completion_case_sensitive && info.name[0:length - 1] ==# a:base
-            let l:item = {'word': info.name, 'menu': info.kind }
-            if !g:tsuquyomi_completion_detail
-              call complete_add(l:item)
-            else
-              call add(entries, info.name)
-              call add(items, l:item)
+            let info = l:res_list[i]
+            if !length 
+                        \ || !g:tsuquyomi_completion_case_sensitive && info.name[0:length - 1] == a:base
+                        \ || g:tsuquyomi_completion_case_sensitive && info.name[0:length - 1] ==# a:base
+                let l:item = {'word': info.name, 'menu': info.kind }
+                if !g:tsuquyomi_completion_detail
+                    call complete_add(l:item)
+                else
+                    call add(entries, info.name)
+                    call add(items, l:item)
+                endif
             endif
-          endif
         endfor
         if g:tsuquyomi_completion_detail
-          call tsuquyomi#perfLogger#record('before_completeMenu'.j)
-          let menus = tsuquyomi#makeCompleteMenu(l:file, l:line, l:start, entries)
-          call tsuquyomi#perfLogger#record('after_completeMenu'.j)
-          let idx = 0
-          for menu in menus
-            let items[idx].menu = menu
-            if has_info
-              let items[idx].info = siginfo
-            endif
-            call complete_add(items[idx])
-            let idx = idx + 1
-          endfor
+            call tsuquyomi#perfLogger#record('before_completeMenu'.j)
+            let menus = tsuquyomi#makeCompleteMenu(l:file, l:line, l:start, entries)
+            call tsuquyomi#perfLogger#record('after_completeMenu'.j)
+            let idx = 0
+            for menu in menus
+                let items[idx].menu = menu
+                if has_info
+                    let items[idx].info = siginfo
+                endif
+                call add(result, items[idx])
+                let idx = idx + 1
+            endfor
         endif
         if complete_check()
-          break
+            break
         endif
         let j = j + 1
-      endwhile
-      return items
-    else
-      return filter(map(l:res_list, 'v:val.name'), 'stridx(v:val, a:base) == 0')
-    endif
-
+    endwhile
+    " return filter(map(l:res_list, 'v:val.name'), 'stridx(v:val, a:base) == 0')
+    return list
   endif
 endfunction
 " ### Complete }}}
